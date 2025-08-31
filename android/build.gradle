@@ -1,0 +1,56 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' } // 🔥 ensure JitPack available here too
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+// Resolve RN local maven dir
+def reactNativeAndroidDir = new File(
+    providers.exec {
+        workingDir(rootDir)
+        commandLine("node", "--print", "require.resolve('react-native/package.json')")
+    }.standardOutput.asText.get().trim(),
+    "../android"
+)
+
+// --- FFmpegKit replacement setup ---
+ext {
+    ffmpegKitFlavor = "https" // options: "https", "min", "full", "full-gpl"
+    ffmpegKitReplacementGroup = "com.github.Anton96Karpenko"
+    ffmpegKitReplacementVersion = "1.2.0"
+}
+
+allprojects {
+    repositories {
+        maven { url(reactNativeAndroidDir) }
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' } // 🔥 add jitpack globally
+    }
+
+    // Dependency substitution
+    configurations.all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == "com.arthenica" &&
+                details.requested.name.startsWith("ffmpeg-kit-")) {
+                details.useTarget("${ffmpegKitReplacementGroup}:${details.requested.name}:${ffmpegKitReplacementVersion}")
+            }
+            if (details.requested.group == "com.arthenica" &&
+                details.requested.name == "ffmpeg-kit") {
+                details.useTarget("${ffmpegKitReplacementGroup}:ffmpeg-kit-${ffmpegKitFlavor}:${ffmpegKitReplacementVersion}")
+            }
+        }
+    }
+}
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"
